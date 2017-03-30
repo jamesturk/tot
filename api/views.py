@@ -38,7 +38,13 @@ class JurisdictionList(AllowFieldLimitingMixin, generics.ListAPIView):
     filter_backends = (filters.OrderingFilter,)
 
     def get_queryset(self):
+        order_by = self.request.query_params.getlist('order_by', ['-id'])
+        
         queryset = Jurisdiction.objects.all()
+        
+        if order_by:
+            queryset = queryset.order_by(*order_by)
+        
         return queryset
 
 
@@ -63,6 +69,7 @@ class PersonList(AllowFieldLimitingMixin, generics.ListAPIView):
     * **latitude, longitude** - must be specified together, filters for individuals
                                 currently representing a district including the
                                 location in question
+    * **order_by** - sort query results on a column
 
     Available Resources for inclusion:
 
@@ -84,6 +91,7 @@ class PersonList(AllowFieldLimitingMixin, generics.ListAPIView):
         ever_member_of = self.request.query_params.get('ever_member_of', None)
         latitude = self.request.query_params.get('latitude', None)
         longitude = self.request.query_params.get('longitude', None)
+        order_by = self.request.query_params.getlist('order_by', ['-id'])
 
         if name:
             queryset = queryset.filter(Q(name__icontains=name) |
@@ -103,6 +111,8 @@ class PersonList(AllowFieldLimitingMixin, generics.ListAPIView):
                 raise ParseError('invalid lat or lon')
         elif latitude or longitude:
             raise ParseError('must provide lat & lon together')
+        if order_by:
+            queryset = queryset.order_by(*order_by)
 
         return queryset.distinct()
 
@@ -127,9 +137,15 @@ class OrganizationList(AllowFieldLimitingMixin, generics.ListAPIView):
     filter_backends = (filters.OrderingFilter,)
 
     def get_queryset(self):
+        order_by = self.request.query_params.getlist('order_by', ['-id'])
+        
         queryset = Organization.objects.all().select_related('jurisdiction',
                                                              'parent',
                                                              )
+        
+        if order_by:
+            queryset = queryset.order_by(*order_by)
+        
         return queryset
 
 
@@ -153,7 +169,13 @@ class MembershipList(AllowFieldLimitingMixin, generics.ListAPIView):
     filter_backends = (filters.OrderingFilter,)
 
     def get_queryset(self):
+        order_by = self.request.query_params.getlist('order_by', ['-id'])
+        
         queryset = Membership.objects.all().select_related('organization', 'post')
+        
+        if order_by:
+            queryset = queryset.order_by(*order_by)
+        
         return queryset
 
 
@@ -181,6 +203,7 @@ class BillList(AllowFieldLimitingMixin, generics.ListAPIView):
                               (exact name or ``ocd-organization`` id)
     * **sponsor** - bills sponsored by given entity
                     (exact name or ``ocd-person``/``ocd-organization`` id)
+    * **order_by** - sort query results on a column
     """
     serializer_class = SimpleBillSerializer
     full_serializer_class = FullBillSerializer
@@ -197,6 +220,7 @@ class BillList(AllowFieldLimitingMixin, generics.ListAPIView):
         sponsor = self.request.query_params.get('sponsor', None)
         bill_id = self.request.query_params.get('identifier', None)
         q = self.request.query_params.get('q', None)
+        order_by = self.request.query_params.getlist('order_by', ['-id'])
 
         if session:
             queryset = queryset.filter(legislative_session__identifier=session)
@@ -226,6 +250,8 @@ class BillList(AllowFieldLimitingMixin, generics.ListAPIView):
             queryset = queryset.filter(identifier=bill_id)
         if q:
             queryset = queryset.filter(versions__links__text__ftsearch=q).distinct()
+        if order_by:
+            queryset = queryset.order_by(*order_by)
 
         return queryset
 
@@ -258,6 +284,7 @@ class VoteList(AllowFieldLimitingMixin, generics.ListAPIView):
     * **organization** - votes within a given Organization
                          (by exact name or ``ocd-organization`` id)
     * **legislative_session** - votes within the session identified by this session identifier
+    * **order_by** - sort query results on a column
     """
     serializer_class = SimpleVoteSerializer
     full_serializer_class = FullVoteSerializer
@@ -274,6 +301,7 @@ class VoteList(AllowFieldLimitingMixin, generics.ListAPIView):
         bill = self.request.query_params.get('bill', None)
         organization = self.request.query_params.get('organization', None)
         session = self.request.query_params.get('legislative_session', None)
+        order_by = self.request.query_params.getlist('order_by', ['-id'])
 
         if voter:
             if voter.startswith('ocd-person/'):
@@ -296,6 +324,8 @@ class VoteList(AllowFieldLimitingMixin, generics.ListAPIView):
                 queryset = queryset.filter(organization__name=organization)
         if session:
             queryset = queryset.filter(legislative_session__identifier=session)
+        if order_by:
+            queryset = queryset.order_by(*order_by)
 
         return queryset
 
